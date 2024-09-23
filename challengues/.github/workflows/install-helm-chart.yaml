@@ -1,0 +1,51 @@
+name: InstallHelmChart
+# Specify that this is a 'reusable workflow' and that it requires the 'project_name' input
+on:
+  push:
+    paths:
+      - 'ping/*'
+  workflow_dispatch:
+    inputs:
+      chart_name:
+        description: "The name of the chart to install"
+        required: true
+      version:
+        description: "The version of the chart we would like to install"
+        required: true
+
+# Define an environment variable named 'REGISTRY_REPOSITORY' that will contain the name of the ACR.
+env:
+  REGISTRY_REPOSITORY: "instance"
+
+jobs:
+  # Hell install chart
+  helm_install:
+    # Run only in Linux runners with 'Docker in Docker' installed
+    runs-on: [ Linux ]
+    # Run only for branches that start with 'refs/head'
+    if: ${{ startsWith(github.ref,'refs/head') }}
+
+    steps:
+      # Download the repository
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Build the container inside the development ACR
+      - name: Hell create Chart
+        run: |
+          AZ_CR_HELM_CHART=${{ inputs.chart_name }}
+          AZ_CR_REGISTRY=${REGISTRY_REPOSITORY}.azurecr.io
+          
+          echo "Preparing environment..."
+          az login --service-principal --username ${{ vars.ORG_AZ_RG_HELM_TEST_001 }} --password ${{ secrets.ORG_AZ_RG_HELM_TEST_001_PWD }} --tenant '0000000-000000-0000000-000000'
+          az acr login --name ${AZ_CR_REGISTRY}
+          
+          
+          #Supposing the cluster exists, is not running and has access to ACR
+          az aks start --resource-group "rg-test-aks --name "AKSTestCluster" 
+          
+          helm install ping oci://$AZ_CR_REGISTRY/helm/$AZ_CR_HELM_CHART --version ${{ inputs.version }}
+
+      - name: Logout
+        if: always()
+        run: az logout

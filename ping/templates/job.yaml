@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ping.fullname" . }}
+  annotations:
+    {{ - include "ping.hook" . | nindent 4 }}
+    {{ - with .Values.job.annotationsHook }}
+spec:
+  template:
+    metadata:
+      name: {{ include "ping.fullname" . }}
+    spec:
+      restartPolicy: {{ Values.job.restartPolicy }}
+      containers:
+      - name: {{ Values.job.name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        command: ["sh", "-c", "echo New version created at: $(date)"
